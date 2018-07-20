@@ -1,38 +1,7 @@
 <p align="center">
-    <a href="https://github.com/yiisoft" target="_blank">
-        <img src="https://avatars0.githubusercontent.com/u/993323" height="100px">
-    </a>
-    <h1 align="center">Yii 2 Basic Project Template</h1>
+    <h1 align="center">Test task for LEADS</h1>
     <br>
 </p>
-
-Yii 2 Basic Project Template is a skeleton [Yii 2](http://www.yiiframework.com/) application best for
-rapidly creating small projects.
-
-The template contains the basic features including user login/logout and a contact page.
-It includes all commonly used configurations that would allow you to focus on adding new
-features to your application.
-
-[![Latest Stable Version](https://img.shields.io/packagist/v/yiisoft/yii2-app-basic.svg)](https://packagist.org/packages/yiisoft/yii2-app-basic)
-[![Total Downloads](https://img.shields.io/packagist/dt/yiisoft/yii2-app-basic.svg)](https://packagist.org/packages/yiisoft/yii2-app-basic)
-[![Build Status](https://travis-ci.org/yiisoft/yii2-app-basic.svg?branch=master)](https://travis-ci.org/yiisoft/yii2-app-basic)
-
-DIRECTORY STRUCTURE
--------------------
-
-      assets/             contains assets definition
-      commands/           contains console commands (controllers)
-      config/             contains application configurations
-      controllers/        contains Web controller classes
-      mail/               contains view files for e-mails
-      models/             contains model classes
-      runtime/            contains files generated during runtime
-      tests/              contains various tests for the basic application
-      vendor/             contains dependent 3rd-party packages
-      views/              contains view files for the Web application
-      web/                contains the entry script and Web resources
-
-
 
 REQUIREMENTS
 ------------
@@ -43,191 +12,119 @@ The minimum requirement by this project template that your Web server supports P
 INSTALLATION
 ------------
 
-### Install via Composer
+Create folder `/var/html/test-leads.my` and clone this repository there 
 
-If you do not have [Composer](http://getcomposer.org/), you may install it by following the instructions
-at [getcomposer.org](http://getcomposer.org/doc/00-intro.md#installation-nix).
+Create MySQL db and set db credentials in `/var/html/test-leads.my/config/db.php` file
 
-You can then install this project template using the following command:
-
+Run this commands in `/var/html/test-leads.my`:
 ~~~
-php composer.phar create-project --prefer-dist --stability=dev yiisoft/yii2-app-basic basic
-~~~
-
-Now you should be able to access the application through the following URL, assuming `basic` is the directory
-directly under the Web root.
-
-~~~
-http://localhost/basic/web/
+php composer.phar install
+php ./yii migrate/up
 ~~~
 
-### Install from an Archive File
+Now you should configure frontend and api domains in apache `httpd-vhosts.conf` file.
+Please add following lines
 
-Extract the archive file downloaded from [yiiframework.com](http://www.yiiframework.com/download/) to
-a directory named `basic` that is directly under the Web root.
+~~~
+<VirtualHost *:80>
+    ServerName test-leads.my
+	ServerAlias www.test-leads.my
+    DocumentRoot "/var/html/test-leads.my/web"
+    <Directory "/var/html/test-leads.my/web">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
 
-Set cookie validation key in `config/web.php` file to some random secret string:
+<VirtualHost *:80>
+    ServerName api.test-leads.my
+    DocumentRoot "/var/html/test-leads.my/api/web"
+    <Directory "/var/html/test-leads.my/api/web">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+~~~
 
+### Add .htaccess file
+
+Add .htaccess file to both apps paths `/var/html/test-leads.my/web` and `/var/html/test-leads.my/api/web`
 ```php
-'request' => [
-    // !!! insert a secret key in the following (if it is empty) - this is required by cookie validation
-    'cookieValidationKey' => '<secret random string goes here>',
-],
+<IfModule mod_rewrite.c>
+    # use mod_rewrite for pretty URL support
+    RewriteEngine on
+    
+    # If a directory or a file exists, use the request directly
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    # Otherwise forward the request to index.php
+    RewriteRule . index.php
+
+    # ...other settings...
+</IfModule>
 ```
 
 You can then access the application through the following URL:
 
 ~~~
-http://localhost/basic/web/
+http://test-leads.my
 ~~~
 
+### API requests
 
-### Install with Docker
+After you register user in frontend you can access api using token.
+Here api request is example. Replace access token GET variable to your user token
 
-Update your vendor packages
+~~~
+POST /api/withdraw?access-token=rV6LuPQafl_4JHaqWArXAWYWt-_Tjp5c HTTP/1.1
+Host: api.test-leads.my
+Content-Type: application/json
+Cache-Control: no-cache
 
-    docker-compose run --rm php composer update --prefer-dist
-    
-Run the installation triggers (creating cookie validation code)
+{
+	"sum": 100
+}
+~~~
 
-    docker-compose run --rm php composer install    
-    
-Start the container
+Response example
 
-    docker-compose up -d
-    
-You can then access the application through the following URL:
+~~~
+{
+	"sum": 100,
+	"balance": 900
+}
+~~~
 
-    http://127.0.0.1:8000
+Here is the same request PHP code example using curl library
 
-**NOTES:** 
-- Minimum required Docker engine version `17.04` for development (see [Performance tuning for volume mounts](https://docs.docker.com/docker-for-mac/osxfs-caching/))
-- The default configuration uses a host-volume in your home directory `.docker-composer` for composer caches
+~~~
+<?php
 
+$curl = curl_init();
 
-CONFIGURATION
--------------
+curl_setopt_array($curl, array(
+  CURLOPT_URL => "http://api.test-leads.my/api/withdraw?access-token=rV6LuPQafl_4JHaqWArXAWYWt-_Tjp5c",
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_ENCODING => "",
+  CURLOPT_MAXREDIRS => 10,
+  CURLOPT_TIMEOUT => 30,
+  CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+  CURLOPT_CUSTOMREQUEST => "POST",
+  CURLOPT_POSTFIELDS => "{\n\t\"sum\": 100\n}",
+  CURLOPT_HTTPHEADER => array(
+    "Cache-Control: no-cache",
+    "Content-Type: application/json"
+  ),
+));
 
-### Database
+$response = curl_exec($curl);
+$err = curl_error($curl);
 
-Edit the file `config/db.php` with real data, for example:
+curl_close($curl);
 
-```php
-return [
-    'class' => 'yii\db\Connection',
-    'dsn' => 'mysql:host=localhost;dbname=yii2basic',
-    'username' => 'root',
-    'password' => '1234',
-    'charset' => 'utf8',
-];
-```
-
-**NOTES:**
-- Yii won't create the database for you, this has to be done manually before you can access it.
-- Check and edit the other files in the `config/` directory to customize your application as required.
-- Refer to the README in the `tests` directory for information specific to basic application tests.
-
-
-TESTING
--------
-
-Tests are located in `tests` directory. They are developed with [Codeception PHP Testing Framework](http://codeception.com/).
-By default there are 3 test suites:
-
-- `unit`
-- `functional`
-- `acceptance`
-
-Tests can be executed by running
-
-```
-vendor/bin/codecept run
-```
-
-The command above will execute unit and functional tests. Unit tests are testing the system components, while functional
-tests are for testing user interaction. Acceptance tests are disabled by default as they require additional setup since
-they perform testing in real browser. 
-
-
-### Running  acceptance tests
-
-To execute acceptance tests do the following:  
-
-1. Rename `tests/acceptance.suite.yml.example` to `tests/acceptance.suite.yml` to enable suite configuration
-
-2. Replace `codeception/base` package in `composer.json` with `codeception/codeception` to install full featured
-   version of Codeception
-
-3. Update dependencies with Composer 
-
-    ```
-    composer update  
-    ```
-
-4. Download [Selenium Server](http://www.seleniumhq.org/download/) and launch it:
-
-    ```
-    java -jar ~/selenium-server-standalone-x.xx.x.jar
-    ```
-
-    In case of using Selenium Server 3.0 with Firefox browser since v48 or Google Chrome since v53 you must download [GeckoDriver](https://github.com/mozilla/geckodriver/releases) or [ChromeDriver](https://sites.google.com/a/chromium.org/chromedriver/downloads) and launch Selenium with it:
-
-    ```
-    # for Firefox
-    java -jar -Dwebdriver.gecko.driver=~/geckodriver ~/selenium-server-standalone-3.xx.x.jar
-    
-    # for Google Chrome
-    java -jar -Dwebdriver.chrome.driver=~/chromedriver ~/selenium-server-standalone-3.xx.x.jar
-    ``` 
-    
-    As an alternative way you can use already configured Docker container with older versions of Selenium and Firefox:
-    
-    ```
-    docker run --net=host selenium/standalone-firefox:2.53.0
-    ```
-
-5. (Optional) Create `yii2_basic_tests` database and update it by applying migrations if you have them.
-
-   ```
-   tests/bin/yii migrate
-   ```
-
-   The database configuration can be found at `config/test_db.php`.
-
-
-6. Start web server:
-
-    ```
-    tests/bin/yii serve
-    ```
-
-7. Now you can run all available tests
-
-   ```
-   # run all available tests
-   vendor/bin/codecept run
-
-   # run acceptance tests
-   vendor/bin/codecept run acceptance
-
-   # run only unit and functional tests
-   vendor/bin/codecept run unit,functional
-   ```
-
-### Code coverage support
-
-By default, code coverage is disabled in `codeception.yml` configuration file, you should uncomment needed rows to be able
-to collect code coverage. You can run your tests and collect coverage with the following command:
-
-```
-#collect coverage for all tests
-vendor/bin/codecept run -- --coverage-html --coverage-xml
-
-#collect coverage only for unit tests
-vendor/bin/codecept run unit -- --coverage-html --coverage-xml
-
-#collect coverage for unit and functional tests
-vendor/bin/codecept run functional,unit -- --coverage-html --coverage-xml
-```
-
-You can see code coverage output under the `tests/_output` directory.
+if ($err) {
+  echo "cURL Error #:" . $err;
+} else {
+  echo $response;
+}
+~~~
